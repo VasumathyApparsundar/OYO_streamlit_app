@@ -10,7 +10,30 @@ with open('linear_regression_model.pkl', 'rb') as file:
 
 with open('feature_names.pkl', 'rb') as file:
     feature_names = pickle.load(file)
-    feature_names = list(feature_names)  # Convert Index object to list
+
+def preprocess_input(area, user_rating, total_ratings, region, rating_summary, hotel_category):
+    input_data = pd.DataFrame(columns=feature_names)
+
+    # Fill in the input data
+    input_data.at[0, 'User Rating'] = user_rating
+    input_data.at[0, 'Total Ratings'] = total_ratings
+
+    # One-hot encode categorical variables
+    categorical_features = {
+        'Area': area,
+        'Region': region,
+        'Rating_Summary': rating_summary,
+        'Hotel Category': hotel_category
+    }
+    for feature, value in categorical_features.items():
+        input_data[f'{feature}_{value}'] = 1
+
+    # Ensure all features are present in the input data
+    for col in feature_names:
+        if col not in input_data.columns:
+            input_data[col] = 0
+
+    return input_data
 
 # Streamlit app
 st.title('OYO Room Price Prediction')
@@ -23,48 +46,15 @@ region = st.selectbox('Region', ['Chennai', 'Bangalore', 'Hyderabad', 'Mumbai', 
 rating_summary = st.selectbox('Rating Summary', ['Excellent', 'Good', 'Average', 'Poor', 'NEW'])
 hotel_category = st.selectbox('Hotel Category', ['Super OYO', 'Collection O', 'Capital O', 'Flagship', 'Townhouse', 'OYO Homes', 'Spot ON', 'Silver Key', 'OYO Hotels', 'OYO Palatte'])
 
-# Create a predict button
 if st.button('Predict'):
-    # Preprocess the inputs
-    def preprocess_input(area, user_rating, total_ratings, region, rating_summary, hotel_category):
-        # Initialize input_data with zeros
-        input_data = np.zeros(len(feature_names))
-        
-        # Map categorical variables to their corresponding columns in input_data
-        # Area
-        if area in feature_names:
-            input_data[feature_names.index(area)] = 1
-        # User Rating and Total Ratings
-        input_data[feature_names.index('User Rating')] = user_rating
-        input_data[feature_names.index('Total Ratings')] = total_ratings
-        # Region
-        if f'Region_{region}' in feature_names:
-            input_data[feature_names.index(f'Region_{region}')] = 1
-        # Rating Summary
-        if f'Rating_Summary_{rating_summary}' in feature_names:
-            input_data[feature_names.index(f'Rating_Summary_{rating_summary}')] = 1
-        # Hotel Category
-        if f'Hotel Category_{hotel_category}' in feature_names:
-            input_data[feature_names.index(f'Hotel Category_{hotel_category}')] = 1
-        
-        return input_data
-
-    # Get the preprocessed input_data
     input_data = preprocess_input(area, user_rating, total_ratings, region, rating_summary, hotel_category)
-    
-    # Ensure input_data has the same number of features as the model expects
-    if len(input_data) != len(feature_names):
-        st.error(f"Number of features in input data ({len(input_data)}) does not match the expected number of features ({len(feature_names)})")
-    else:
-        # Reshape input_data to match model's expected input shape
-        input_data = input_data.reshape(1, -1)
 
-        # Scale the input data
-        scaler = StandardScaler()
-        input_data_scaled = scaler.fit_transform(input_data)
+    # Scale the input data
+    scaler = StandardScaler()
+    input_data_scaled = scaler.fit_transform(input_data)
 
-        # Predict the discounted price
-        predicted_price = model.predict(input_data_scaled)
+    # Predict the discounted price
+    predicted_price = model.predict(input_data_scaled)
 
-        # Display the result
-        st.write(f'The predicted discounted price for the OYO room is: ₹{predicted_price[0]:.2f}')
+    # Display the result
+    st.write(f'The predicted discounted price for the OYO room is: ₹{predicted_price[0]:.2f}')
